@@ -127,164 +127,39 @@ Enabled auditing and investigated the following Windows Security Event IDs:
 
 These observations represent the behavior of this laboratory configuration. They are not, by themselves, proof of exploitable vulnerabilities.
 
-## Evidence & Command Execution
+## Evidence
 
-### 1. Network Reconnaissance — Nmap
+### Lab Architecture
 
-**Command executed:**
+- [Virtual machines](evidence/architecture/01-virtual-machines.png)
+- [Windows Server network](evidence/architecture/02-windows-server-network.png)
+- [Kali Host-only network](evidence/architecture/03-kali-host-only-network.png)
+- [Kali NAT network](evidence/architecture/04-kali-nat-network.png)
+- [Kali to Domain Controller connectivity](evidence/architecture/05-kali-to-domain-controller-ping.png)
+- [Kali IP configuration](evidence/architecture/06-kali-ip-configuration.png)
 
-```bash
-sudo nmap -n -Pn -sV -p 53,88,135,139,389,445,464,636,3268 192.168.56.10
-```
+### Network Reconnaissance and Enumeration
 
-**Purpose:** Identify exposed network services on the Active Directory Domain Controller.
+- [Nmap scan](evidence/nmap/08-nmap-domain-controller.png)
+- [LDAP enumeration](evidence/ldap/09-ldap-enumeration.png)
+- [SMB enumeration](evidence/smb/10-smb-enumeration.png)
 
-**Result:** DNS, Kerberos, LDAP, SMB, RPC and Global Catalog services were identified.
+### Windows Security Events
 
-![Nmap scan](evidence/nmap/08-nmap-domain-controller.png)
+- [Account lockout — Event 4740](evidence/windows-events/19-event-4740-account-lockout.png)
+- [Failed logon — Event 4625](evidence/windows-events/20-event-4625-failed-logon.png)
+- [Process creation — Event 4688](evidence/windows-events/21-event-4688-process-creation.png)
+- [Group member added — Event 4728](evidence/windows-events/22-event-4728-group-member-added.png)
+- [Group member removed — Event 4729](evidence/windows-events/23-event-4729-group-member-removed.png)
+- [Directory modification — Event 5136](evidence/windows-events/24-event-5136-directory-change.png)
 
-### 2. LDAP Enumeration
+### Kerberos and Security Policies
 
-**Command executed:**
+- [Kerberos TGT verification](evidence/kerberos/25-kerberos-authentication-klist.png)
+- [Final password policy](evidence/security-policies/26-final-password-policy.png)
+- [Final audit policy](evidence/security-policies/27-final-audit-policy.png)
+- [Account lockout reset](evidence/security-policies/28-account-lockout-reset.png)
 
-```bash
-ldapsearch -x -H ldap://192.168.56.10:389 -D "atorres@techsolutions.test" -W -b "DC=techsolutions,DC=test" "(objectClass=user)" sAMAccountName
-```
-
-**Purpose:** Perform authenticated LDAP enumeration.
-
-**Result:** Active Directory user account names were retrieved.
-
-![LDAP enumeration](evidence/ldap/09-ldap-enumeration.png)
-
-### 3. SMB Enumeration
-
-**Command executed:**
-
-```bash
-smbclient -L //192.168.56.10 -U 'TECHSOLUTIONS/atorres'
-```
-
-**Purpose:** Enumerate available SMB shares.
-
-**Result:** The server exposed standard administrative and domain shares.
-
-![SMB enumeration](evidence/smb/10-smb-enumeration.png)
-
-### 4. Kerberos Authentication
-
-**Commands executed:**
-
-```bash
-kinit atorres@TECHSOLUTIONS.TEST
-klist
-```
-
-**Purpose:** Authenticate to the Active Directory Kerberos realm and inspect the ticket cache.
-
-**Result:** A valid Ticket Granting Ticket (TGT) was obtained.
-
-![Kerberos TGT](evidence/kerberos/25-kerberos-authentication-klist.png)
-
-### 5. Account Lockout Detection — Event ID 4740
-
-**Command executed:**
-
-```powershell
-Get-WinEvent -FilterHashtable @{
-    LogName = 'Security'
-    Id = 4740
-} -MaxEvents 5 |
-Format-List TimeCreated, Id, Message
-```
-
-**Purpose:** Investigate account lockout events.
-
-**Result:** The dedicated laboratory account `lockouttest` was recorded as locked out.
-
-![Account lockout](evidence/windows-events/19-event-4740-account-lockout.png)
-
-### 6. Failed Logon Detection — Event ID 4625
-
-**Command executed:**
-
-```powershell
-Get-WinEvent -FilterHashtable @{
-    LogName = 'Security'
-    Id = 4625
-} -MaxEvents 10 |
-Format-List TimeCreated, Id, Message
-```
-
-**Purpose:** Investigate failed authentication attempts and their status codes.
-
-**Result:** Different failure conditions were identified, including incorrect passwords and logon-type restrictions.
-
-![Failed logon](evidence/windows-events/20-event-4625-failed-logon.png)
-
-### 7. Process Creation Monitoring — Event ID 4688
-
-**Command executed:**
-
-```powershell
-Get-WinEvent -FilterHashtable @{
-    LogName = 'Security'
-    Id = 4688
-} -MaxEvents 10 |
-Format-List TimeCreated, Id, Message
-```
-
-**Purpose:** Review process creation activity.
-
-**Result:** Process creation events, including PowerShell activity, were recorded.
-
-![Process creation](evidence/windows-events/21-event-4688-process-creation.png)
-
-### 8. Security Group Changes — Event IDs 4728 and 4729
-
-**Commands executed:**
-
-```powershell
-Get-WinEvent -FilterHashtable @{
-    LogName = 'Security'
-    Id = 4728
-} -MaxEvents 10 |
-Format-List TimeCreated, Id, Message
-```
-
-```powershell
-Get-WinEvent -FilterHashtable @{
-    LogName = 'Security'
-    Id = 4729
-} -MaxEvents 10 |
-Format-List TimeCreated, Id, Message
-```
-
-**Purpose:** Monitor additions and removals of security group members.
-
-**Result:** The addition and subsequent removal of `crivera` from `Security-Analysts` were recorded.
-
-![Group member added](evidence/windows-events/22-event-4728-group-member-added.png)
-
-![Group member removed](evidence/windows-events/23-event-4729-group-member-removed.png)
-
-### 9. Directory Service Changes — Event ID 5136
-
-**Command executed:**
-
-```powershell
-Get-WinEvent -FilterHashtable @{
-    LogName = 'Security'
-    Id = 5136
-} -MaxEvents 10 |
-Format-List TimeCreated, Id, Message
-```
-
-**Purpose:** Investigate modifications to Active Directory objects.
-
-**Result:** A change to the description attribute of `atorres` was recorded.
-
-![Directory modification](evidence/windows-events/24-event-5136-directory-change.png)
 ## Command Documentation
 
 Detailed command references are available in the `commands/` directory:
