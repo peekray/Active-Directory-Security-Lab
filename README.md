@@ -24,7 +24,63 @@ The objective was to understand how an Active Directory environment can be asses
 | Kali Host-only IP | `192.168.56.30` |
 | Kali NAT IP | `10.0.3.15` |
 | Virtualization | Oracle VirtualBox |
+### Network Configuration Evidence
 
+**Windows Server 2022 — IP Configuration**
+
+Command used:
+
+```powershell
+ipconfig /all
+```
+
+Purpose: Inspect the Domain Controller network configuration.
+
+Result: The Host-only interface was configured with IP address `192.168.56.10`.
+
+![Windows Server Network](evidence/architecture/02-windows-server-network.png)
+
+**Kali Linux — Network Interfaces**
+
+Command used:
+
+```bash
+ip -br addr
+```
+
+Purpose: Identify the IP addresses assigned to Kali Linux interfaces.
+
+Result:
+- Host-only: `192.168.56.30`
+- NAT: `10.0.3.15`
+
+![Kali Network Configuration](evidence/architecture/06-kali-ip-configuration.png)
+
+**Kali Linux — Routing Table**
+
+Command used:
+
+```bash
+ip route
+```
+
+Purpose: Inspect the routing table and default gateway.
+
+Result: Kali used the NAT gateway `10.0.3.2` for Internet connectivity.
+
+**Domain Controller Connectivity**
+
+Command used:
+
+```bash
+ping -c 4 192.168.56.10
+```
+
+Purpose: Verify connectivity between Kali and the Domain Controller.
+
+Result: Four successful replies were received with no packet loss.
+
+![Kali to Domain Controller](evidence/architecture/05-kali-to-domain-controller-ping.png)
 ### Network Design
 
 - Host-only networking provided isolated communication between Kali and Windows Server.
